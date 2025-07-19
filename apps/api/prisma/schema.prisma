@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  avatar    String?
+  role      UserRole @default(STAFF)
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workflows Workflow[] @relation("WorkflowCreator")
+  clients Client[] @relation("ClientManager")
+
+  @@map("users")
+}
+
+// Tenant model
+model Tenant {
+  id      String @id @default(cuid())
+  name    String
+  slug    String @unique
+  plan    PlanType @default(FREE)
+  settings Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users User[]
+  workflows Workflow[]
+  clients Client[]
+  documents Document[]
+
+  @@map("tenants")
+}
+
+// Workflow model
+model Workflow {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  tenantId    String
+  createdBy   String
+  isActive    Boolean  @default(true)
+  steps       Json     // Array of WorkflowStep
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator User @relation("WorkflowCreator", fields: [createdBy], references: [id])
+
+  @@map("workflows")
+}
+
+// Client model
+model Client {
+  id       String       @id @default(cuid())
+  tenantId String
+  name     String
+  email    String
+  phone    String?
+  status   ClientStatus @default(LEAD)
+  metadata Json         @default("{}")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  manager User? @relation("ClientManager", fields: [managerId], references: [id])
+  managerId String?
+
+  @@map("clients")
+}
+
+// Document model
+model Document {
+  id       String       @id @default(cuid())
+  tenantId String
+  name     String
+  type     DocumentType
+  url      String
+  size     Int
+  mimeType String
+  metadata Json         @default("{}")
+  tags     String[]     @default([])
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  MANAGER
+  STAFF
+  CLIENT
+}
+
+enum PlanType {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum ClientStatus {
+  LEAD
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum DocumentType {
+  INVOICE
+  CONTRACT
+  PROPOSAL
+  RECEIPT
+  OTHER
+}

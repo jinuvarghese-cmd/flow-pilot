@@ -1,0 +1,18 @@
+{
+    "extends": "../../packages/config/typescript/base.json",
+    "compilerOptions": {
+      "outDir": "./dist",
+      "rootDir": "./src",
+      "baseUrl": ".",
+      "paths": {
+        "@/*": ["./src/*"],
+        "@/controllers/*": ["./src/controllers/*"],
+        "@/services/*": ["./src/services/*"],
+        "@/middleware/*": ["./src/middleware/*"],
+        "@/utils/*": ["./src/utils/*"],
+        "@/graphql/*": ["./src/graphql/*"]
+      }
+    },
+    "include": ["src/**/*", "prisma/**/*"],
+    "exclude": ["node_modules", "dist"]
+  }
