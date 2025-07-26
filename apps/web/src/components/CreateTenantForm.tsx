@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { apiClient } from "@/lib/api-client";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -32,9 +33,8 @@ export function CreateTenantForm() {
   const mutation = useMutation({
     mutationFn: async (data: FormData) => {
       setError(null);
-      const res = await fetch("http://localhost:3001/api/tenants", {
+      const res = await apiClient("/api/tenants", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: data.name,
           slug: data.slug,

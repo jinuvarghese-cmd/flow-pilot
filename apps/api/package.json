@@ -21,18 +21,18 @@
     "@fastify/swagger": "^8.14.0",
     "@fastify/swagger-ui": "^2.1.0",
     "@flow-pilot/types": "workspace:*",
-    "@prisma/client": "^5.7.1",
     "dotenv": "^17.2.0",
     "fastify": "^4.25.2",
     "graphql": "^16.8.1",
+    "jsonwebtoken": "^9.0.2",
     "mercurius": "^12.0.2",
     "pino": "^8.17.2",
     "pino-pretty": "^10.3.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.11.5",
-    "prisma": "^5.7.1",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   }

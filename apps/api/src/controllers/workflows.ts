@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import { requireAuth } from '../utils/auth';
 
 const createWorkflowSchema = z.object({
   name: z.string().min(1),
@@ -12,44 +13,43 @@ const createWorkflowSchema = z.object({
 });
 
 export async function registerWorkflowRoutes(fastify: FastifyInstance, prisma: PrismaClient) {
-  // Get all workflows
-  fastify.get('/api/workflows', async (request, reply) => {
-    try {
-      const workflows = await prisma.workflow.findMany();
+  // Get all workflows for the current users tenant
+  fastify.get('/api/workflows', { preHandler: requireAuth() }, async (request, reply) => {
+      const user = request.user;
+      const workflows = await prisma.workflow.findMany({
+        where:{
+          tenantId: user.tenantId,
+        }
+      });
+      
       return { success: true, data: workflows };
-    } catch (error) {
-      fastify.log.error('Error fetching workflows:', error);
-      return reply.status(500).send({ success: false, error: 'Internal server error' });
-    }
   });
 
   // Get workflow by ID
-  fastify.get('/api/workflows/:id', async (request, reply) => {
+  fastify.get('/api/workflows/:id', { preHandler: requireAuth() }, async (request, reply) => {
+    const user = request.user;
     const { id } = request.params as { id: string };
-    try {
-      const workflow = await prisma.workflow.findUnique({ where: { id } });
+      const workflow = await prisma.workflow.findFirst({ 
+        where: { 
+          id, 
+          tenantId: user.tenantId 
+        } 
+      });
       if (!workflow) {
         return reply.status(404).send({ success: false, error: 'Workflow not found' });
       }
       return { success: true, data: workflow };
-    } catch (error) {
-      fastify.log.error('Error fetching workflow:', error);
-      return reply.status(500).send({ success: false, error: 'Internal server error' });
-    }
   });
 
   // Create workflow
-  fastify.post('/api/workflows', async (request, reply) => {
-    try {
-      const body = createWorkflowSchema.parse(request.body);
-      const workflow = await prisma.workflow.create({ data: body });
-      return reply.status(201).send({ success: true, data: workflow });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({ success: false, error: 'Validation error', details: error.errors });
-      }
-      fastify.log.error('Error creating workflow:', error);
-      return reply.status(500).send({ success: false, error: 'Internal server error' });
+  fastify.post('/api/workflows', { preHandler: requireAuth() }, async (request, reply) => {
+    const user = request.user;
+    const body = createWorkflowSchema.parse(request.body);
+    if(body.tenantId !== user.tenantId){
+      return reply.status(403).send({ success: false, error: 'Cannot create workflow for a different tenant' });
     }
+    
+    const workflow = await prisma.workflow.create({ data: body });
+    return reply.status(201).send({ success: true, data: workflow });
   });
 }

@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
+import { requireAuth } from '../utils/auth';
 
 const createClientSchema = z.object({
   tenantId: z.string(),
@@ -13,43 +14,43 @@ const createClientSchema = z.object({
 
 export async function registerClientRoutes(fastify: FastifyInstance, prisma: PrismaClient) {
   // Get all clients
-  fastify.get('/api/clients', async (request, reply) => {
-    try {
-      const clients = await prisma.client.findMany();
-      return { success: true, data: clients };
-    } catch (error) {
-      fastify.log.error('Error fetching clients:', error);
-      return reply.status(500).send({ success: false, error: 'Internal server error' });
-    }
+  fastify.get('/api/clients', { preHandler: requireAuth() }, async (request, reply) => {
+    const user = request.user;
+    const clients = await prisma.client.findMany({
+      where:{
+        tenantId: user.tenantId,
+      }
+    });
+    return { success: true, data: clients };
   });
 
   // Get client by ID
-  fastify.get('/api/clients/:id', async (request, reply) => {
+  fastify.get('/api/clients/:id', { preHandler: requireAuth() }, async (request, reply) => {
+    const user = request.user;
     const { id } = request.params as { id: string };
-    try {
-      const client = await prisma.client.findUnique({ where: { id } });
+
+    const client = await prisma.client.findFirst({ 
+      where: { 
+        id, 
+        tenantId: user.tenantId 
+      } 
+    });
+
       if (!client) {
         return reply.status(404).send({ success: false, error: 'Client not found' });
       }
       return { success: true, data: client };
-    } catch (error) {
-      fastify.log.error('Error fetching client:', error);
-      return reply.status(500).send({ success: false, error: 'Internal server error' });
-    }
+
   });
 
   // Create client
-  fastify.post('/api/clients', async (request, reply) => {
-    try {
-      const body = createClientSchema.parse(request.body);
-      const client = await prisma.client.create({ data: body });
-      return reply.status(201).send({ success: true, data: client });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return reply.status(400).send({ success: false, error: 'Validation error', details: error.errors });
-      }
-      fastify.log.error('Error creating client:', error);
-      return reply.status(500).send({ success: false, error: 'Internal server error' });
+  fastify.post('/api/clients', { preHandler: requireAuth() }, async (request, reply) => {
+    const user = request.user;
+    const body = createClientSchema.parse(request.body);
+    if(body.tenantId !== user.tenantId){
+      return reply.status(403).send({ success: false, error: 'Cannot create client for a different tenant' });
     }
+    const client = await prisma.client.create({ data: body });
+    return reply.status(201).send({ success: true, data: client });
   });
 }

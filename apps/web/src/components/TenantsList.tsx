@@ -1,11 +1,12 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "../lib/api-client";
 
 export function TenantsList() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["tenants"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:3001/api/tenants");
+      const res = await apiClient("/api/tenants");
       if (!res.ok) throw new Error("Failed to fetch tenants");
       return res.json();
     },
@@ -13,6 +14,7 @@ export function TenantsList() {
 
   if (isLoading) return <div>Loading tenants...</div>;
   if (error) return <div>Error loading tenants.</div>;
+  if (!data || !data.data) return <div>No data available.</div>;
 
   return (
     <div className="mt-8">
