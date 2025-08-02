@@ -15,16 +15,18 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
-  avatar    String?
+  image    String?
+  emailVerified DateTime?
   role      UserRole @default(STAFF)
-  tenantId  String
+  tenantId  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   workflows Workflow[] @relation("WorkflowCreator")
   clients Client[] @relation("ClientManager")
+  workflowTemplates WorkflowTemplate[] @relation("TemplateCreator")
 
   // 👇 Required for NextAuth
   accounts Account[]
@@ -49,6 +51,9 @@ model Tenant {
   workflows Workflow[]
   clients Client[]
   documents Document[]
+  workflowExecutions WorkflowExecution[]
+  workflowTemplates  WorkflowTemplate[]
+  jobQueues         JobQueue[]
 
   @@map("tenants")
 }
@@ -68,6 +73,7 @@ model Workflow {
   // Relations
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   creator User @relation("WorkflowCreator", fields: [createdBy], references: [id])
+  executions WorkflowExecution[]
 
   @@map("workflows")
 }
@@ -175,4 +181,82 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// Workflow Execution model
+model WorkflowExecution {
+  id          String   @id @default(cuid())
+  workflowId  String
+  tenantId    String
+  status      WorkflowExecutionStatus @default(PENDING)
+  currentStep Int      @default(0)
+  data        Json     @default("{}")
+  result      Json?
+  error       String?
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("workflow_executions")
+}
+
+// Workflow Template model
+model WorkflowTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String
+  steps       Json     // Array of WorkflowStep
+  isPublic    Boolean  @default(false)
+  createdBy   String?
+  tenantId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  creator User?   @relation("TemplateCreator", fields: [createdBy], references: [id])
+  tenant  Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("workflow_templates")
+}
+
+// Job Queue model for tracking background jobs
+model JobQueue {
+  id        String   @id @default(cuid())
+  jobId     String   @unique
+  type      String
+  data      Json
+  status    JobStatus @default(PENDING)
+  progress  Int      @default(0)
+  result    Json?
+  error     String?
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("job_queues")
+}
+
+enum WorkflowExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
 }

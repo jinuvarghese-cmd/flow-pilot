@@ -44,11 +44,37 @@ export default NextAuth({
             session.accessToken = token.accessToken;
             return session;
         },
+        async signIn({user, account, profile}){
+            return true;
+        },
         async jwt({ token, user, trigger, session, account }) {
             if (user) {
-              token.id = user.id;
-              token.role = user.role;
-              token.tenantId = user.tenantId;
+                token.id = user.id;
+                token.role = user.role;
+                token.tenantId = user.tenantId;
+
+                // Create tenant for new users here
+                if (!user.tenantId) {
+                    try {
+                        const defaultTenant = await prisma.tenant.create({
+                            data: {
+                                name: `${user.name}'s Workspace`,
+                                slug: `${user.name?.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+                                plan: 'FREE',
+                                settings: {},
+                            },
+                        });
+
+                        await prisma.user.update({
+                            where: { id: user.id },
+                            data: { tenantId: defaultTenant.id },
+                        });
+
+                        token.tenantId = defaultTenant.id;
+                    } catch (error) {
+                        console.error('Error creating default tenant:', error);
+                    }
+                }
             }
 
             if(account?.access_token){

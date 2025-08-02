@@ -1,3 +1,5 @@
+import { WorkflowStep } from "./workflow";
+
 // User and Authentication Types
 export interface User {
     id: string;
@@ -60,17 +62,7 @@ export interface User {
     createdAt: Date;
     updatedAt: Date;
   }
-  
-  export interface WorkflowStep {
-    id: string;
-    type: StepType;
-    name: string;
-    config: Record<string, any>;
-    order: number;
-    nextStepId?: string;
-    conditions?: WorkflowCondition[];
-  }
-  
+    
   export enum StepType {
     FORM = 'FORM',
     EMAIL = 'EMAIL',
