@@ -129,6 +129,7 @@ export const useWorkflowBuilder = create<WorkflowBuilderStore>()(
                 state.executionStatus = {};
                 state.isDirty = false;
                 state.lastSaved = null;
+          
         }),
 
         loadWorkflow: (nodes: WorkflowStep[], edges: any[]) =>
